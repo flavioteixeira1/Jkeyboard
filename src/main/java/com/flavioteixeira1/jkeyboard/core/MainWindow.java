@@ -17,7 +17,7 @@ public class MainWindow extends JFrame {
     private javax.swing.Timer uiUpdateTimer;
 
     public MainWindow() {
-        super("QJoyPad 4.3 (Clone Java)");
+        super("Jkeyboard (QJoypad java clone)");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(850, 550);
         setLocationRelativeTo(null);
