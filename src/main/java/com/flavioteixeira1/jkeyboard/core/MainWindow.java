@@ -5,7 +5,7 @@ import javax.swing.*;
 import java.awt.event.*;
 import java.util.*;
 import java.util.List;
-import java.util.Timer;
+import net.java.games.input.Component;
 
 public class MainWindow extends JFrame {
     private JComboBox<String> perfilCombo;
@@ -17,9 +17,9 @@ public class MainWindow extends JFrame {
     private javax.swing.Timer uiUpdateTimer;
 
     public MainWindow() {
-        super("Jkeyboard (QJoypad java clone)");
+        super("QJoyPad (Clone Java)");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(850, 550);
+        setSize(900, 650);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
@@ -52,17 +52,41 @@ public class MainWindow extends JFrame {
         // --- Joystick Tabs ---
         joystickTabs = new JTabbedPane();
         
-        // Inicializar joysticks
-        joystickManager1 = JoystickManager.getInstanceForPlayer(0);
-        joystickManager2 = JoystickManager.getInstanceForPlayer(1);
-        
-        // Painel para Player 1
-        DevicePanel panel1 = new DevicePanel(joystickManager1, 0);
-        joystickTabs.addTab("Player 1", createPlayerPanel(panel1, 0));
-        
-        // Painel para Player 2  
-        DevicePanel panel2 = new DevicePanel(joystickManager2, 1);
-        joystickTabs.addTab("Player 2", createPlayerPanel(panel2, 1));
+        try {
+            // Inicializar joysticks
+            joystickManager1 = JoystickManager.getInstanceForPlayer(0);
+            joystickManager2 = JoystickManager.getInstanceForPlayer(1);
+            
+            // Painel para Player 1
+            if (joystickManager1.isJoystickEnabled()) {
+                DevicePanel panel1 = new DevicePanel(joystickManager1, 0);
+                devicePanels.add(panel1);
+                joystickTabs.addTab("Player 1", createPlayerPanel(panel1, 0));
+            } else {
+                JPanel noDevicePanel = new JPanel(new BorderLayout());
+                noDevicePanel.add(new JLabel("Nenhum joystick detectado para Player 1", JLabel.CENTER), BorderLayout.CENTER);
+                joystickTabs.addTab("Player 1", noDevicePanel);
+            }
+            
+            // Painel para Player 2  
+            if (joystickManager2.isJoystickEnabled()) {
+                DevicePanel panel2 = new DevicePanel(joystickManager2, 1);
+                devicePanels.add(panel2);
+                joystickTabs.addTab("Player 2", createPlayerPanel(panel2, 1));
+            } else {
+                JPanel noDevicePanel = new JPanel(new BorderLayout());
+                noDevicePanel.add(new JLabel("Nenhum joystick detectado para Player 2", JLabel.CENTER), BorderLayout.CENTER);
+                joystickTabs.addTab("Player 2", noDevicePanel);
+            }
+        } catch (Exception e) {
+            System.err.println("Erro ao inicializar painéis de joystick: " + e.getMessage());
+            e.printStackTrace();
+            
+            JPanel errorPanel = new JPanel(new BorderLayout());
+            errorPanel.add(new JLabel("Erro ao inicializar joysticks. Verifique se os dispositivos estão conectados.", 
+                                    JLabel.CENTER), BorderLayout.CENTER);
+            joystickTabs.addTab("Erro", errorPanel);
+        }
         
         // Painel de status
         JPanel statusPanel = new JPanel(new BorderLayout());
@@ -94,6 +118,11 @@ public class MainWindow extends JFrame {
             joystickManager1.setUseCustomMapping(useCustom);
             joystickManager2.setUseCustomMapping(useCustom);
             toggleMappingBtn.setText(useCustom ? "Usar Mapeamento Padrão" : "Usar Mapeamento Customizado");
+            
+            // Atualizar labels dos botões
+            for (DevicePanel panel : devicePanels) {
+                panel.updateButtonLabels();
+            }
         });
         
         bottomBar.add(clearBtn); 
@@ -112,8 +141,10 @@ public class MainWindow extends JFrame {
             System.exit(0);
         });
 
-        // Iniciar timer para atualizar UI
-        startUIUpdateTimer();
+        // Iniciar timer para atualizar UI apenas se houver painéis
+        if (!devicePanels.isEmpty()) {
+            startUIUpdateTimer();
+        }
     }
     
     private JPanel createPlayerPanel(DevicePanel devicePanel, int playerId) {
@@ -121,18 +152,23 @@ public class MainWindow extends JFrame {
         panel.add(devicePanel, BorderLayout.CENTER);
         
         // Adicionar informações do joystick
-        JLabel infoLabel = new JLabel("Joystick: " + 
-            (playerId == 0 ? joystickManager1.getJoystickName() : joystickManager2.getJoystickName()));
+        String joystickName = (playerId == 0) ? 
+            joystickManager1.getJoystickName() : joystickManager2.getJoystickName();
+        JLabel infoLabel = new JLabel("Joystick: " + joystickName);
         infoLabel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
         panel.add(infoLabel, BorderLayout.NORTH);
         
         return panel;
     }
     
-    private void startUIUpdateTimer() {
+     private void startUIUpdateTimer() {
         uiUpdateTimer = new javax.swing.Timer(50, e -> { // 20 FPS
             for (DevicePanel panel : devicePanels) {
-                panel.updateUIState();
+                try {
+                    panel.updateUIState();
+                } catch (Exception ex) {
+                    System.err.println("Erro ao atualizar UI: " + ex.getMessage());
+                }
             }
         });
         uiUpdateTimer.start();
@@ -153,9 +189,29 @@ public class MainWindow extends JFrame {
             joystickManager1 = JoystickManager.getInstanceForPlayer(0);
             joystickManager2 = JoystickManager.getInstanceForPlayer(1);
             
-            // Atualizar painéis
-            for (DevicePanel panel : devicePanels) {
-                panel.updateButtonLabels();
+            // Recriar painéis
+            devicePanels.clear();
+            joystickTabs.removeAll();
+            
+            try {
+                if (joystickManager1.isJoystickEnabled()) {
+                    DevicePanel panel1 = new DevicePanel(joystickManager1, 0);
+                    devicePanels.add(panel1);
+                    joystickTabs.addTab("Player 1", createPlayerPanel(panel1, 0));
+                }
+                
+                if (joystickManager2.isJoystickEnabled()) {
+                    DevicePanel panel2 = new DevicePanel(joystickManager2, 1);
+                    devicePanels.add(panel2);
+                    joystickTabs.addTab("Player 2", createPlayerPanel(panel2, 1));
+                }
+                
+                // Reiniciar timer se houver painéis
+                if (!devicePanels.isEmpty()) {
+                    startUIUpdateTimer();
+                }
+            } catch (Exception e) {
+                System.err.println("Erro ao recriar painéis: " + e.getMessage());
             }
         }
     }
@@ -193,8 +249,9 @@ public class MainWindow extends JFrame {
         private JButton[] povBtns = new JButton[4];     // Direcionais (POV)
         private JoystickManager joystickManager;
         private int playerId;
-        private Map<Integer, Boolean> buttonStates = new HashMap<>();
-        private Map<String, Boolean> axisStates = new HashMap<>();
+        private Map<Integer, Boolean> lastButtonStates = new HashMap<>();
+        private Map<String, Float> lastAxisStates = new HashMap<>();
+        private float lastPOVState = Component.POV.OFF;
         
         public DevicePanel(JoystickManager manager, int playerId) {
             this.joystickManager = manager;
@@ -209,7 +266,17 @@ public class MainWindow extends JFrame {
             gbc.gridx = 0;
             gbc.gridy = 0;
             gbc.gridwidth = 3;
-            add(new JLabel("Controles - Player " + (playerId + 1), JLabel.CENTER), gbc);
+            JLabel title = new JLabel("Controles - Player " + (playerId + 1), JLabel.CENTER);
+            title.setFont(new Font("Arial", Font.BOLD, 14));
+            add(title, gbc);
+            
+            // Status
+            gbc.gridy++;
+            JLabel statusLabel = new JLabel("Status: " + 
+                (manager.isJoystickEnabled() ? "Conectado" : "Desconectado"), 
+                JLabel.CENTER);
+            statusLabel.setForeground(manager.isJoystickEnabled() ? Color.GREEN.darker() : Color.RED);
+            add(statusLabel, gbc);
             
             // Separador
             gbc.gridy++;
@@ -218,158 +285,371 @@ public class MainWindow extends JFrame {
             // Eixos Analógicos
             gbc.gridy++;
             gbc.gridwidth = 1;
-            add(new JLabel("Eixos Analógicos:", JLabel.LEFT), gbc);
+            JLabel axisLabel = new JLabel("Eixos Analógicos:", JLabel.LEFT);
+            axisLabel.setFont(new Font("Arial", Font.BOLD, 12));
+            add(axisLabel, gbc);
             
             gbc.gridy++;
             String[] axisNames = {"Eixo X", "Eixo Y", "Eixo Z", "Eixo RZ"};
             for (int i = 0; i < axisBtns.length; i++) {
                 axisBtns[i] = new JButton(axisNames[i] + ": [Não configurado]");
-                axisBtns[i].setPreferredSize(new Dimension(180, 30));
+                axisBtns[i].setPreferredSize(new Dimension(200, 35));
+                axisBtns[i].setToolTipText("Clique para configurar este eixo");
                 final int axisIdx = i;
                 axisBtns[i].addActionListener(e -> configureAxis(axisIdx));
                 
                 gbc.gridx = i % 2;
-                gbc.gridy = 3 + (i / 2);
+                gbc.gridy = 4 + (i / 2);
                 add(axisBtns[i], gbc);
             }
             
             // Direcionais (POV/Hat)
             gbc.gridx = 0;
-            gbc.gridy = 7;
+            gbc.gridy = 8;
             gbc.gridwidth = 3;
-            add(new JLabel("Direcionais (POV/Hat):", JLabel.LEFT), gbc);
+            JLabel povLabel = new JLabel("Direcionais (POV/Hat):", JLabel.LEFT);
+            povLabel.setFont(new Font("Arial", Font.BOLD, 12));
+            add(povLabel, gbc);
             
             gbc.gridy++;
             gbc.gridwidth = 1;
             String[] povNames = {"Cima", "Baixo", "Esquerda", "Direita"};
             for (int i = 0; i < povBtns.length; i++) {
                 povBtns[i] = new JButton(povNames[i] + ": [Não configurado]");
-                povBtns[i].setPreferredSize(new Dimension(150, 30));
+                povBtns[i].setPreferredSize(new Dimension(160, 35));
+                povBtns[i].setToolTipText("Clique para configurar esta direção");
                 final int povIdx = i;
                 povBtns[i].addActionListener(e -> configurePOV(povIdx));
                 
                 gbc.gridx = i;
-                gbc.gridy = 9;
+                gbc.gridy = 10;
                 add(povBtns[i], gbc);
             }
             
             // Botões
             gbc.gridx = 0;
-            gbc.gridy = 10;
+            gbc.gridy = 11;
             gbc.gridwidth = 3;
-            add(new JLabel("Botões:", JLabel.LEFT), gbc);
+            JLabel buttonLabel = new JLabel("Botões:", JLabel.LEFT);
+            buttonLabel.setFont(new Font("Arial", Font.BOLD, 12));
+            add(buttonLabel, gbc);
             
             gbc.gridy++;
             gbc.gridwidth = 1;
-            for (int i = 0; i < buttonBtns.length; i++) {
-                buttonBtns[i] = new JButton("Botão " + (i+1) + ": [Não configurado]");
-                buttonBtns[i].setPreferredSize(new Dimension(140, 30));
-                final int btnIdx = i;
-                buttonBtns[i].addActionListener(e -> configureButton(btnIdx));
+            try {
+                int buttonCount = Math.min(joystickManager.getButtonCount(), 12);
+                for (int i = 0; i < buttonCount; i++) {
+                    buttonBtns[i] = new JButton("Botão " + (i+1) + ": [Não configurado]");
+                    buttonBtns[i].setPreferredSize(new Dimension(150, 35));
+                    buttonBtns[i].setToolTipText("Clique para configurar este botão");
+                    final int btnIdx = i;
+                    buttonBtns[i].addActionListener(e -> configureButton(btnIdx));
+                    
+                    gbc.gridx = i % 3;
+                    gbc.gridy = 13 + (i / 3);
+                    add(buttonBtns[i], gbc);
+                }
                 
-                gbc.gridx = i % 3;
-                gbc.gridy = 12 + (i / 3);
-                add(buttonBtns[i], gbc);
+                // Inicializar estados
+                for (int i = 0; i < buttonCount; i++) {
+                    lastButtonStates.put(i, false);
+                }
+            } catch (Exception e) {
+                System.err.println("Erro ao criar botões: " + e.getMessage());
+                JLabel errorLabel = new JLabel("Erro ao inicializar botões", JLabel.CENTER);
+                gbc.gridx = 0;
+                gbc.gridy = 13;
+                gbc.gridwidth = 3;
+                add(errorLabel, gbc);
             }
             
-            devicePanels.add(this);
             updateButtonLabels();
         }
         
         private void configureButton(int buttonIndex) {
-            String label = "Botão " + (buttonIndex + 1) + " - Player " + (playerId + 1);
-            int keyCode = KeyCaptureDialog.capture(
-                ConfigDialog.getCurrentInstance(), label);
-            
-            if (keyCode > 0) {
-                joystickManager.setCustomButtonMapping(buttonIndex, keyCode);
-                buttonBtns[buttonIndex].setText("Botão " + (buttonIndex + 1) + ": " + 
-                    KeyEvent.getKeyText(keyCode));
-                joystickManager.setUseCustomMapping(true);
-            }
-        }
-        
-        private void configureAxis(int axisIndex) {
-            String[] directions = {"Negativo", "Positivo"};
-            String[] axisNames = {"Eixo X", "Eixo Y", "Eixo Z", "Eixo RZ"};
-            
-            for (int dir = 0; dir < 2; dir++) {
-                String label = axisNames[axisIndex] + " (" + directions[dir] + ") - Player " + (playerId + 1);
+            try {
+                String label = "Botão " + (buttonIndex + 1) + " - Player " + (playerId + 1);
                 int keyCode = KeyCaptureDialog.capture(
                     ConfigDialog.getCurrentInstance(), label);
                 
                 if (keyCode > 0) {
-                    // Mapear eixo (simplificado - na prática precisaria mapear Component.Identifier)
+                    joystickManager.setCustomButtonMapping(buttonIndex, keyCode);
+                    updateButtonLabels();
+                    joystickManager.setUseCustomMapping(true);
+                    
+                    // Atualizar botão de toggle na MainWindow
                     JOptionPane.showMessageDialog(this,
-                        "Configure " + axisNames[axisIndex] + " " + directions[dir] + " para: " + 
+                        "Botão " + (buttonIndex + 1) + " mapeado para: " + 
                         KeyEvent.getKeyText(keyCode),
-                        "Mapeamento de Eixo",
+                        "Mapeamento Configurado",
                         JOptionPane.INFORMATION_MESSAGE);
                 }
+            } catch (Exception e) {
+                System.err.println("Erro ao configurar botão: " + e.getMessage());
+                JOptionPane.showMessageDialog(this,
+                    "Erro ao configurar botão: " + e.getMessage(),
+                    "Erro",
+                    JOptionPane.ERROR_MESSAGE);
+            }
+        }
+        
+        private void configureAxis(int axisIndex) {
+            try {
+                String[] directions = {"Negativo", "Positivo"};
+                String[] axisNames = {"Eixo X", "Eixo Y", "Eixo Z", "Eixo RZ"};
+                
+                // Obter identificador do eixo
+                List<Component.Identifier> availableAxes = joystickManager.getAvailableAxes();
+                if (axisIndex < availableAxes.size()) {
+                    Component.Identifier axisId = availableAxes.get(axisIndex);
+                    
+                    for (int dir = 0; dir < 2; dir++) {
+                        String label = axisNames[axisIndex] + " (" + directions[dir] + ") - Player " + (playerId + 1);
+                        int keyCode = KeyCaptureDialog.capture(
+                            ConfigDialog.getCurrentInstance(), label);
+                        
+                        if (keyCode > 0) {
+                            // Obter mapeamento atual
+                            Integer[] currentMapping = joystickManager.getMappedKeysForAxis(axisId);
+                            Integer[] newMapping = new Integer[]{currentMapping[0], currentMapping[1]};
+                            
+                            // Atualizar direção específica
+                            if (dir == 0) { // Negativo
+                                newMapping[0] = keyCode;
+                            } else { // Positivo
+                                newMapping[1] = keyCode;
+                            }
+                            
+                            joystickManager.setCustomAxisMapping(axisId, newMapping[0], newMapping[1]);
+                            updateButtonLabels();
+                            joystickManager.setUseCustomMapping(true);
+                            
+                            JOptionPane.showMessageDialog(this,
+                                axisNames[axisIndex] + " " + directions[dir] + " mapeado para: " + 
+                                KeyEvent.getKeyText(keyCode),
+                                "Mapeamento Configurado",
+                                JOptionPane.INFORMATION_MESSAGE);
+                        }
+                    }
+                } else {
+                    JOptionPane.showMessageDialog(this,
+                        "Eixo não disponível neste joystick",
+                        "Erro",
+                        JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (Exception e) {
+                System.err.println("Erro ao configurar eixo: " + e.getMessage());
+                JOptionPane.showMessageDialog(this,
+                    "Erro ao configurar eixo: " + e.getMessage(),
+                    "Erro",
+                    JOptionPane.ERROR_MESSAGE);
             }
         }
         
         private void configurePOV(int povIndex) {
-            String[] directions = {"Cima", "Baixo", "Esquerda", "Direita"};
-            String label = "POV " + directions[povIndex] + " - Player " + (playerId + 1);
-            
-            int keyCode = KeyCaptureDialog.capture(
-                ConfigDialog.getCurrentInstance(), label);
-            
-            if (keyCode > 0) {
-                // Aqui você precisaria implementar o mapeamento específico para POV
-                povBtns[povIndex].setText(directions[povIndex] + ": " + 
-                    KeyEvent.getKeyText(keyCode));
-                JOptionPane.showMessageDialog(this,
-                    "Configure POV " + directions[povIndex] + " para: " + 
-                    KeyEvent.getKeyText(keyCode),
-                    "Mapeamento POV",
-                    JOptionPane.INFORMATION_MESSAGE);
+            try {
+                String[] directions = {"Cima", "Baixo", "Esquerda", "Direita"};
+                String label = "POV " + directions[povIndex] + " - Player " + (playerId + 1);
+                
+                int keyCode = KeyCaptureDialog.capture(
+                    ConfigDialog.getCurrentInstance(), label);
+                
+                if (keyCode > 0) {
+                    // Configurar mapeamento POV (simplificado)
+                    povBtns[povIndex].setText(directions[povIndex] + ": " + 
+                        KeyEvent.getKeyText(keyCode));
+                    
+                    JOptionPane.showMessageDialog(this,
+                        "POV " + directions[povIndex] + " mapeado para: " + 
+                        KeyEvent.getKeyText(keyCode),
+                        "Mapeamento Configurado",
+                        JOptionPane.INFORMATION_MESSAGE);
+                }
+            } catch (Exception e) {
+                System.err.println("Erro ao configurar POV: " + e.getMessage());
             }
         }
         
         public void updateUIState() {
             if (!joystickManager.isJoystickEnabled()) return;
             
-            // Atualizar estados visuais baseados no polling (se necessário)
-            // Esta é uma implementação simplificada - você pode expandir para
-            // mostrar feedback visual em tempo real como no JoystickTest
+            try {
+                // Atualizar estados dos botões
+                int buttonCount = Math.min(joystickManager.getButtonCount(), 12);
+                for (int i = 0; i < buttonCount; i++) {
+                    boolean currentState = joystickManager.getButtonState(i);
+                    Boolean lastState = lastButtonStates.get(i);
+                    
+                    if (lastState == null || currentState != lastState) {
+                        highlightButton(i, currentState);
+                        lastButtonStates.put(i, currentState);
+                    }
+                }
+                
+                // Atualizar estados dos eixos
+                List<Component.Identifier> availableAxes = joystickManager.getAvailableAxes();
+                for (int i = 0; i < Math.min(availableAxes.size(), 4); i++) {
+                    Component.Identifier axisId = availableAxes.get(i);
+                    float currentValue = joystickManager.getAxisState(axisId);
+                    String axisKey = axisId.toString();
+                    Float lastValue = lastAxisStates.get(axisKey);
+                    
+                    if (lastValue == null || Math.abs(currentValue - lastValue) > 0.1f) {
+                        highlightAxis(i, currentValue);
+                        lastAxisStates.put(axisKey, currentValue);
+                    }
+                }
+                
+                // Atualizar POV
+                float currentPOV = joystickManager.getPOVState();
+                if (currentPOV != lastPOVState) {
+                    highlightPOV(currentPOV);
+                    lastPOVState = currentPOV;
+                }
+            } catch (Exception e) {
+                System.err.println("Erro ao atualizar UI state: " + e.getMessage());
+            }
         }
         
         public void updateButtonLabels() {
-            // Atualizar labels dos botões baseados no mapeamento atual
-            // Esta é uma implementação básica - você pode expandir para mostrar
-            // o mapeamento atual de cada botão
+            try {
+                // Atualizar labels dos botões baseados no mapeamento atual
+                int buttonCount = Math.min(joystickManager.getButtonCount(), 12);
+                for (int i = 0; i < buttonCount; i++) {
+                    int keyCode = joystickManager.getMappedKeyForButton(i);
+                    String keyName = (keyCode > 0) ? KeyEvent.getKeyText(keyCode) : "[Não configurado]";
+                    buttonBtns[i].setText("Botão " + (i+1) + ": " + keyName);
+                }
+                
+                // Atualizar labels dos eixos
+                List<Component.Identifier> availableAxes = joystickManager.getAvailableAxes();
+                String[] axisNames = {"Eixo X", "Eixo Y", "Eixo Z", "Eixo RZ"};
+                for (int i = 0; i < Math.min(availableAxes.size(), 4); i++) {
+                    Component.Identifier axisId = availableAxes.get(i);
+                    Integer[] keys = joystickManager.getMappedKeysForAxis(axisId);
+                    
+                    String negKey = (keys[0] > 0) ? KeyEvent.getKeyText(keys[0]) : "Nenhuma";
+                    String posKey = (keys[1] > 0) ? KeyEvent.getKeyText(keys[1]) : "Nenhuma";
+                    
+                    axisBtns[i].setText(axisNames[i] + ": " + negKey + " / " + posKey);
+                    
+                    // Mostrar se o eixo está disponível
+                    axisBtns[i].setEnabled(i < availableAxes.size());
+                }
+                
+                // Atualizar cor baseada no tipo de mapeamento
+                Color mappingColor = joystickManager.getUseCustomMapping() ? 
+                    new Color(220, 240, 255) : UIManager.getColor("Panel.background");
+                setBackground(mappingColor);
+                
+                for (JButton btn : buttonBtns) {
+                    if (btn != null) {
+                        btn.setBackground(mappingColor);
+                    }
+                }
+                for (JButton btn : axisBtns) {
+                    if (btn != null) {
+                        btn.setBackground(mappingColor);
+                    }
+                }
+                for (JButton btn : povBtns) {
+                    if (btn != null) {
+                        btn.setBackground(mappingColor);
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("Erro ao atualizar labels dos botões: " + e.getMessage());
+            }
         }
         
         // Métodos para feedback visual
         public void highlightButton(int buttonIdx, boolean pressed) {
-            if (buttonIdx >= 0 && buttonIdx < buttonBtns.length) {
-                if (pressed) {
-                    buttonBtns[buttonIdx].setBackground(new Color(144, 238, 144)); // Verde claro
-                    buttonBtns[buttonIdx].setOpaque(true);
-                    buttonBtns[buttonIdx].setBorder(BorderFactory.createLineBorder(Color.GREEN, 2));
-                } else {
-                    buttonBtns[buttonIdx].setBackground(UIManager.getColor("Button.background"));
-                    buttonBtns[buttonIdx].setOpaque(false);
-                    buttonBtns[buttonIdx].setBorder(UIManager.getBorder("Button.border"));
+            try {
+                if (buttonIdx >= 0 && buttonIdx < buttonBtns.length && buttonBtns[buttonIdx] != null) {
+                    if (pressed) {
+                        buttonBtns[buttonIdx].setBackground(new Color(144, 238, 144)); // Verde claro
+                        buttonBtns[buttonIdx].setOpaque(true);
+                        buttonBtns[buttonIdx].setBorder(BorderFactory.createLineBorder(Color.GREEN.darker(), 2));
+                    } else {
+                        Color mappingColor = joystickManager.getUseCustomMapping() ? 
+                            new Color(220, 240, 255) : UIManager.getColor("Button.background");
+                        buttonBtns[buttonIdx].setBackground(mappingColor);
+                        buttonBtns[buttonIdx].setBorder(UIManager.getBorder("Button.border"));
+                    }
+                    buttonBtns[buttonIdx].repaint();
                 }
-                buttonBtns[buttonIdx].repaint();
+            } catch (Exception e) {
+                System.err.println("Erro ao destacar botão: " + e.getMessage());
             }
         }
         
         public void highlightAxis(int axisIdx, float value) {
-            if (axisIdx >= 0 && axisIdx < axisBtns.length) {
-                Color color;
-                if (Math.abs(value) > 0.5f) {
-                    color = value > 0 ? new Color(173, 216, 230) : new Color(255, 218, 185); // Azul claro ou laranja claro
-                    axisBtns[axisIdx].setBackground(color);
-                    axisBtns[axisIdx].setOpaque(true);
-                } else {
-                    axisBtns[axisIdx].setBackground(UIManager.getColor("Button.background"));
-                    axisBtns[axisIdx].setOpaque(false);
+            try {
+                if (axisIdx >= 0 && axisIdx < axisBtns.length && axisBtns[axisIdx] != null) {
+                    if (Math.abs(value) > 0.3f) {
+                        Color color = value > 0 ? new Color(173, 216, 230) : new Color(255, 218, 185); // Azul claro ou laranja claro
+                        axisBtns[axisIdx].setBackground(color);
+                        axisBtns[axisIdx].setOpaque(true);
+                        
+                        // Adicionar valor no tooltip
+                        axisBtns[axisIdx].setToolTipText(String.format("Valor: %.2f", value));
+                    } else {
+                        Color mappingColor = joystickManager.getUseCustomMapping() ? 
+                            new Color(220, 240, 255) : UIManager.getColor("Button.background");
+                        axisBtns[axisIdx].setBackground(mappingColor);
+                        axisBtns[axisIdx].setToolTipText("Clique para configurar este eixo");
+                    }
+                    axisBtns[axisIdx].repaint();
                 }
-                axisBtns[axisIdx].repaint();
+            } catch (Exception e) {
+                System.err.println("Erro ao destacar eixo: " + e.getMessage());
+            }
+        }
+        
+        public void highlightPOV(float povValue) {
+            try {
+                // Resetar todas as direções POV
+                for (JButton btn : povBtns) {
+                    if (btn != null) {
+                        Color mappingColor = joystickManager.getUseCustomMapping() ? 
+                            new Color(220, 240, 255) : UIManager.getColor("Button.background");
+                        btn.setBackground(mappingColor);
+                    }
+                }
+                
+                // Destacar direções ativas
+                if (povValue != Component.POV.OFF) {
+                    if (povValue == Component.POV.UP || povValue == Component.POV.UP_LEFT || povValue == Component.POV.UP_RIGHT) {
+                        if (povBtns[0] != null) {
+                            povBtns[0].setBackground(new Color(200, 255, 200));
+                            povBtns[0].setOpaque(true);
+                        }
+                    }
+                    if (povValue == Component.POV.DOWN || povValue == Component.POV.DOWN_LEFT || povValue == Component.POV.DOWN_RIGHT) {
+                        if (povBtns[1] != null) {
+                            povBtns[1].setBackground(new Color(200, 255, 200));
+                            povBtns[1].setOpaque(true);
+                        }
+                    }
+                    if (povValue == Component.POV.LEFT || povValue == Component.POV.UP_LEFT || povValue == Component.POV.DOWN_LEFT) {
+                        if (povBtns[2] != null) {
+                            povBtns[2].setBackground(new Color(200, 255, 200));
+                            povBtns[2].setOpaque(true);
+                        }
+                    }
+                    if (povValue == Component.POV.RIGHT || povValue == Component.POV.UP_RIGHT || povValue == Component.POV.DOWN_RIGHT) {
+                        if (povBtns[3] != null) {
+                            povBtns[3].setBackground(new Color(200, 255, 200));
+                            povBtns[3].setOpaque(true);
+                        }
+                    }
+                }
+                
+                for (JButton btn : povBtns) {
+                    if (btn != null) btn.repaint();
+                }
+            } catch (Exception e) {
+                System.err.println("Erro ao destacar POV: " + e.getMessage());
             }
         }
     }
@@ -383,3 +663,5 @@ public class MainWindow extends JFrame {
         super.dispose();
     }
 }
+
+
