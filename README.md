@@ -1,4 +1,4 @@
-QJoyPad (Clone Java) - Emulador de Joystick para Teclado
+Jkeyboard  - (Similar to QJoyPad)  - Emulador de Joystick para Teclado
 
 Um programa escrito em Java que utiliza a classe JInput e Robot do Java para que eventos de entrada no joystick possam ser replicados no teclado conforme a configuração na interface gráfica.
 🎮 Funcionalidades
