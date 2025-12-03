@@ -10,14 +10,15 @@ import net.java.games.input.Component;
 public class MainWindow extends JFrame {
     private JComboBox<String> perfilCombo;
     private JButton addPerfil, removePerfil, renomearPerfil;
-    private JButton importBtn, exportBtn, saveBtn, revertBtn;
+    private JButton importBtn, exportBtn, saveBtn, revertBtn, helpBtn;
     private JTabbedPane joystickTabs;
     private List<DevicePanel> devicePanels = new ArrayList<>();
-    private JoystickManager joystickManager1, joystickManager2;
+    private JoystickManager joystickManager1, joystickManager2, joystickManager3, joystickManager4;
     private javax.swing.Timer uiUpdateTimer;
+    HelpDialog helpDialog;
 
     public MainWindow() {
-        super("QJoyPad (Clone Java)");
+        super("JKeyboard ");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(900, 650);
         setLocationRelativeTo(null);
@@ -25,7 +26,7 @@ public class MainWindow extends JFrame {
 
         // --- Top Bar ---
         JPanel topBar = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        perfilCombo = new JComboBox<>(new String[]{"Master_System_Osmose"});
+        perfilCombo = new JComboBox<>(new String[]{"VNES"});
         addPerfil = new JButton("+");
         removePerfil = new JButton("-");
         renomearPerfil = new JButton("Renomear");
@@ -40,13 +41,15 @@ public class MainWindow extends JFrame {
         exportBtn = new JButton("Exportar");
         saveBtn = new JButton("Salvar");
         revertBtn = new JButton("Reverter");
+	    helpBtn = new JButton("Sobre");
         
         topBar.add(Box.createHorizontalStrut(20));
         topBar.add(importBtn); 
         topBar.add(exportBtn); 
         topBar.add(saveBtn); 
         topBar.add(revertBtn);
-
+	    topBar.add(helpBtn);
+	
         add(topBar, BorderLayout.NORTH);
 
         // --- Joystick Tabs ---
@@ -56,6 +59,8 @@ public class MainWindow extends JFrame {
             // Inicializar joysticks
             joystickManager1 = JoystickManager.getInstanceForPlayer(0);
             joystickManager2 = JoystickManager.getInstanceForPlayer(1);
+            joystickManager3 = JoystickManager.getInstanceForPlayer(2);
+            joystickManager4 = JoystickManager.getInstanceForPlayer(3);
             
             // Painel para Player 1
             if (joystickManager1.isJoystickEnabled()) {
@@ -77,6 +82,26 @@ public class MainWindow extends JFrame {
                 JPanel noDevicePanel = new JPanel(new BorderLayout());
                 noDevicePanel.add(new JLabel("Nenhum joystick detectado para Player 2", JLabel.CENTER), BorderLayout.CENTER);
                 joystickTabs.addTab("Player 2", noDevicePanel);
+            }
+            // Painel para Player 3  
+            if (joystickManager3.isJoystickEnabled()) {
+                DevicePanel panel3 = new DevicePanel(joystickManager3, 2);
+                devicePanels.add(panel3);
+                joystickTabs.addTab("Player 3", createPlayerPanel(panel3, 2));
+            } else {
+                JPanel noDevicePanel = new JPanel(new BorderLayout());
+                noDevicePanel.add(new JLabel("Nenhum joystick detectado para Player 3", JLabel.CENTER), BorderLayout.CENTER);
+                joystickTabs.addTab("Player 3", noDevicePanel);
+            }
+            // Painel para Player 4  
+            if (joystickManager4.isJoystickEnabled()) {
+                DevicePanel panel4 = new DevicePanel(joystickManager4, 3);
+                devicePanels.add(panel4);
+                joystickTabs.addTab("Player 4", createPlayerPanel(panel4, 3));
+            } else {
+                JPanel noDevicePanel = new JPanel(new BorderLayout());
+                noDevicePanel.add(new JLabel("Nenhum joystick detectado para Player 3", JLabel.CENTER), BorderLayout.CENTER);
+                joystickTabs.addTab("Player 4", noDevicePanel);
             }
         } catch (Exception e) {
             System.err.println("Erro ao inicializar painéis de joystick: " + e.getMessage());
@@ -117,6 +142,8 @@ public class MainWindow extends JFrame {
             boolean useCustom = !joystickManager1.getUseCustomMapping();
             joystickManager1.setUseCustomMapping(useCustom);
             joystickManager2.setUseCustomMapping(useCustom);
+            //joystickManager3.setUseCustomMapping(useCustom);
+            //joystickManager4.setUseCustomMapping(useCustom);
             toggleMappingBtn.setText(useCustom ? "Usar Mapeamento Padrão" : "Usar Mapeamento Customizado");
             
             // Atualizar labels dos botões
@@ -134,6 +161,7 @@ public class MainWindow extends JFrame {
 
         // Configurar ações
         clearBtn.addActionListener(e -> clearAllMappings());
+        helpBtn.addActionListener((e -> showHelpDialog()));
         quickSetBtn.addActionListener(e -> showQuickSetupDialog());
         closeBtn.addActionListener(e -> this.setVisible(false));
         quitBtn.addActionListener(e -> {
@@ -183,11 +211,14 @@ public class MainWindow extends JFrame {
         if (option == JOptionPane.YES_OPTION) {
             joystickManager1.setUseCustomMapping(false);
             joystickManager2.setUseCustomMapping(false);
-            
+            joystickManager3.setUseCustomMapping(false);
+            joystickManager4.setUseCustomMapping(false);
             // Recarregar mapeamento padrão
             JoystickManager.globalCleanup();
             joystickManager1 = JoystickManager.getInstanceForPlayer(0);
             joystickManager2 = JoystickManager.getInstanceForPlayer(1);
+            joystickManager3 = JoystickManager.getInstanceForPlayer(2);
+            joystickManager4 = JoystickManager.getInstanceForPlayer(3);
             
             // Recriar painéis
             devicePanels.clear();
@@ -205,6 +236,17 @@ public class MainWindow extends JFrame {
                     devicePanels.add(panel2);
                     joystickTabs.addTab("Player 2", createPlayerPanel(panel2, 1));
                 }
+
+                if (joystickManager3.isJoystickEnabled()) {
+                    DevicePanel panel3 = new DevicePanel(joystickManager3, 2);
+                    devicePanels.add(panel3);
+                    joystickTabs.addTab("Player 3", createPlayerPanel(panel3, 1));
+                }
+                if (joystickManager4.isJoystickEnabled()) {
+                    DevicePanel panel4 = new DevicePanel(joystickManager4, 3);
+                    devicePanels.add(panel4);
+                    joystickTabs.addTab("Player 4", createPlayerPanel(panel4, 1));
+                }
                 
                 // Reiniciar timer se houver painéis
                 if (!devicePanels.isEmpty()) {
@@ -214,6 +256,11 @@ public class MainWindow extends JFrame {
                 System.err.println("Erro ao recriar painéis: " + e.getMessage());
             }
         }
+    }
+
+    private void showHelpDialog(){
+       HelpDialog helpDialog = new HelpDialog(this);
+       helpDialog.setVisible(true);
     }
     
     private void showQuickSetupDialog() {

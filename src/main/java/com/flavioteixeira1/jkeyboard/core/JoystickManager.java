@@ -15,6 +15,8 @@ public class JoystickManager {
     // Singleton instance
     private static JoystickManager instancePlayer1;
     private static JoystickManager instancePlayer2;
+    private static JoystickManager instancePlayer3;
+    private static JoystickManager instancePlayer4;
     private Controller joystick;
     private Component[] components;
     private boolean[] lastButtonStates;
@@ -28,6 +30,8 @@ public class JoystickManager {
     
     // Mapeamento de botões para teclas
     private Map<Integer, Integer> buttonToKeyMapping;
+
+    private Map<Integer, Integer> buttonMap; // idx botão -> KeyEvent.VK_?
     
     // Estados atuais das teclas virtuais
     private boolean[] keyStates;
@@ -38,7 +42,7 @@ public class JoystickManager {
     // Thread de polling
     private Thread pollingThread;
 
-    // Identificador do jogador (0 = Player 1, 1 = Player 2)
+    // Identificador do jogador (0 = Player 1, 1 = Player 2, 2 = Player 3, 4 = Player 4)
     private int playerId;
 
     // Nome do joystick para debug
@@ -103,20 +107,41 @@ public class JoystickManager {
                 instancePlayer1 = new JoystickManager(0);
             }
             return instancePlayer1;
-        } else {
+        } else if(playerId == 1 ){
             if (instancePlayer2 == null) {
                 instancePlayer2 = new JoystickManager(1);
             }
             return instancePlayer2;
         }
+        else if(playerId == 2 ){
+            if (instancePlayer3 == null) {
+                instancePlayer3 = new JoystickManager(2);
+            }
+            return instancePlayer3;
+        }
+        else{
+             if (instancePlayer4 == null) {
+                instancePlayer4 = new JoystickManager(3);
+            }
+            return instancePlayer4;
+        }
+
+
+        
     }
     
      // Método para verificar se uma instância foi inicializada
     public static boolean isInitializedForPlayer(int playerId) {
        if (playerId == 0) {
             return instancePlayer1 != null;
-        } else {
+        } else if(playerId == 1) {
             return instancePlayer2 != null;
+        }
+        else if(playerId == 2) {
+            return instancePlayer3 != null;
+        }
+        else {
+            return instancePlayer4 != null;
         }
     }
     
@@ -434,6 +459,7 @@ public class JoystickManager {
                      getKeyName(negativeKey) + "/" + getKeyName(positiveKey));
     }
 
+    //Setter
     public void setUseCustomMapping(boolean useCustom) {
         this.useCustomMapping = useCustom;
         System.out.println("Usando mapeamento " + (useCustom ? "customizado" : "padrão"));
@@ -667,8 +693,25 @@ public class JoystickManager {
         } else {
             status.append("Player 2:  Não conectado\n");
         }
-        
+
+        if (instancePlayer3 != null && instancePlayer3.isJoystickEnabled()) {
+            status.append("Player 3:  ").append(instancePlayer3.getJoystickName()).append("\n");
+        } else {
+            status.append("Player 3:  Não conectado\n");
+        }
+
+        if (instancePlayer4 != null && instancePlayer4.isJoystickEnabled()) {
+            status.append("Player 4:  ").append(instancePlayer4.getJoystickName()).append("\n");
+        } else {
+            status.append("Player 4:  Não conectado\n");
+        }
+
         return status.toString();
+        
+    }
+
+     public int getKeyForButton(int buttonIdx) {
+        return buttonMap.getOrDefault(buttonIdx, -1);
     }
 
     public void cleanup() {
@@ -689,6 +732,14 @@ public class JoystickManager {
         if (instancePlayer2 != null) {
             instancePlayer2.cleanup();
             instancePlayer2 = null;
+        }
+        if (instancePlayer3 != null) {
+            instancePlayer3.cleanup();
+            instancePlayer3 = null;
+        }
+        if (instancePlayer4 != null) {
+            instancePlayer4.cleanup();
+            instancePlayer4 = null;
         }
     }
 
