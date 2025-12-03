@@ -28,9 +28,10 @@ import net.java.games.input.ControllerEnvironment;
 public class JoystickTest {
  JInputJoystickTest jInputJoystickTest;
     
-    public static void main(String args[]) {
+    public static void main(String args[]) throws InterruptedException {
         JInputJoystickTest jinputJoystickTest = new JInputJoystickTest();
         // Writes (into console) informations of all controllers that are found.
+        //jinputJoystickTest.showControllerInfo();
         //jinputJoystickTest.getAllControllersInfo();
         // In loop writes (into console) all joystick components and its current values.
         //jinputJoystickTest.pollControllerAndItsComponents(Controller.Type.STICK);
