@@ -8,7 +8,7 @@ import java.util.Map;
 public class ConfigDialog extends JDialog {
     private static ConfigDialog currentInstance;
 
-    public ConfigDialog(Frame owner, JoystickManagerOLD jm) {
+    public ConfigDialog(Frame owner, JoystickManager jm) {
         super(owner, "Configurar mapeamento: " + jm.getJoystickName(), true);
         currentInstance = this;
 
