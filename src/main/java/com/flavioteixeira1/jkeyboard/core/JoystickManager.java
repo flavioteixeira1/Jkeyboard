@@ -62,7 +62,7 @@ public class JoystickManager {
 
     private boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
     
-    // Construtor privado 
+    // Construtor 
     JoystickManager(int playerId) {
         this.playerId = playerId;
         System.out.println(" JoystickManager instância criada para Player " + (playerId + 1));
@@ -450,13 +450,24 @@ public class JoystickManager {
 
     public void setCustomButtonMapping(int buttonIndex, int keyCode) {
         customButtonMapping.put(buttonIndex, keyCode);
-        System.out.println("Botão customizado " + buttonIndex + " mapeado para " + getKeyName(keyCode));
+        if (keyCode == -1) {
+            System.out.println("Mapeamento do botão " + buttonIndex + " foi limpo");
+        } else {
+            System.out.println("Botão customizado " + buttonIndex + " mapeado para " + getKeyName(keyCode));
+        }
     }
 
     public void setCustomAxisMapping(Component.Identifier axis, int negativeKey, int positiveKey) {
         customAxisMapping.put(axis, new Integer[]{negativeKey, positiveKey});
-        System.out.println("Eixo customizado " + axis + " mapeado para " + 
-                     getKeyName(negativeKey) + "/" + getKeyName(positiveKey));
+        
+        if (negativeKey == -1 && positiveKey == -1) {
+            System.out.println("Eixo " + axis + " teve seu mapeamento limpo");
+        } else {
+            String negKeyName = negativeKey > 0 ? getKeyName(negativeKey) : "Nenhuma";
+            String posKeyName = positiveKey > 0 ? getKeyName(positiveKey) : "Nenhuma";
+            System.out.println("Eixo " + axis + " mapeado para " + 
+                        negKeyName + "/" + posKeyName);
+        }
     }
 
     //Setter
@@ -720,6 +731,12 @@ public class JoystickManager {
         joystickEnabled.set(false);
         joystick = null;
         System.out.println(" JoystickManager limpo");
+    }
+
+    public void clearAllCustomMappings() {
+        customButtonMapping.clear();
+        customAxisMapping.clear();
+        System.out.println("Todos os mapeamentos customizados foram limpos");
     }
 
     
