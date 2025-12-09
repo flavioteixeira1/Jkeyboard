@@ -180,8 +180,24 @@ public class MainWindow extends JFrame {
         panel.add(devicePanel, BorderLayout.CENTER);
         
         // Adicionar informações do joystick
-        String joystickName = (playerId == 0) ? 
-            joystickManager1.getJoystickName() : joystickManager2.getJoystickName();
+        String joystickName = null;
+        switch(playerId) {
+            case 0:
+            joystickName = joystickManager1.getJoystickName();
+                break;
+            case 1:
+            joystickName = joystickManager2.getJoystickName();
+                break;
+            case 2:  
+            joystickName = joystickManager3.getJoystickName();
+                 break;
+            case 3:
+            joystickName = joystickManager4.getJoystickName();  
+                break;
+            default:
+            joystickName = joystickManager1.getJoystickName();
+                break;    
+        }
         JLabel infoLabel = new JLabel("Joystick: " + joystickName);
         infoLabel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
         panel.add(infoLabel, BorderLayout.NORTH);
