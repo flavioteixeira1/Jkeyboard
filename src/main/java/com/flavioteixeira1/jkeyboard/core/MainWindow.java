@@ -3,6 +3,7 @@ package com.flavioteixeira1.jkeyboard.core;
 import java.awt.*;
 import javax.swing.*;
 import java.awt.event.*;
+import java.io.File;
 import java.util.*;
 import java.util.List;
 import net.java.games.input.Component;
@@ -15,11 +16,12 @@ public class MainWindow extends JFrame {
     private List<DevicePanel> devicePanels = new ArrayList<>();
     private JoystickManager joystickManager1, joystickManager2, joystickManager3, joystickManager4;
     private javax.swing.Timer uiUpdateTimer;
+    private JoystickProfileManager profileManager;
     HelpDialog helpDialog;
 
     public MainWindow() {
-        super("JKeyboard ");
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        super("vNes Desktop - Joystick Config ");
+        //setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(900, 650);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
@@ -51,6 +53,13 @@ public class MainWindow extends JFrame {
 	    topBar.add(helpBtn);
 	
         add(topBar, BorderLayout.NORTH);
+
+        // Initialize profile manager
+        profileManager = JoystickProfileManager.getInstance();
+        // Configure profile 
+        updateProfileComboBox();
+        // Configure action profile buttons
+        configureProfileActions();
 
         // --- Joystick Tabs ---
         joystickTabs = new JTabbedPane();
@@ -133,6 +142,18 @@ public class MainWindow extends JFrame {
         // --- Bottom Bar ---
         JPanel bottomBar = new JPanel(new FlowLayout(FlowLayout.CENTER));
         JButton clearBtn = new JButton("Limpar");
+        JButton debugBtn = new JButton("Debug");
+            debugBtn.addActionListener(e -> {
+                System.out.println("\n=== DEBUG MAPPING ===");
+                System.out.println(joystickManager1.getMappingStatus());
+                System.out.println("====================\n");
+                
+                JTextArea textArea = new JTextArea(joystickManager1.getMappingStatus(), 20, 50);
+                JScrollPane scrollPane = new JScrollPane(textArea);
+                JOptionPane.showMessageDialog(this, scrollPane, "Debug Mapeamento", 
+                    JOptionPane.INFORMATION_MESSAGE);
+            });
+            bottomBar.add(debugBtn);
         JButton quickSetBtn = new JButton("Configuração Rápida");
         JButton toggleMappingBtn = new JButton("Usar Mapeamento Customizado");
         JButton closeBtn = new JButton("Fechar Diálogo");
@@ -140,8 +161,8 @@ public class MainWindow extends JFrame {
         
         toggleMappingBtn.addActionListener(e -> {
             boolean useCustom = !joystickManager1.getUseCustomMapping();
-            joystickManager1.setUseCustomMapping(useCustom);
-            joystickManager2.setUseCustomMapping(useCustom);
+            joystickManager1.setUseCustomMapping(false);
+            joystickManager2.setUseCustomMapping(false);
             joystickManager3.setUseCustomMapping(false);
             joystickManager4.setUseCustomMapping(false);
             toggleMappingBtn.setText(useCustom ? "Usar Mapeamento Padrão" : "Usar Mapeamento Customizado");
@@ -179,30 +200,342 @@ public class MainWindow extends JFrame {
         JPanel panel = new JPanel(new BorderLayout());
         panel.add(devicePanel, BorderLayout.CENTER);
         
-        // Adicionar informações do joystick
-        String joystickName = null;
+            JoystickManager manager = null;
         switch(playerId) {
             case 0:
-            joystickName = joystickManager1.getJoystickName();
+                manager = joystickManager1;
                 break;
             case 1:
-            joystickName = joystickManager2.getJoystickName();
+                manager = joystickManager2;
                 break;
             case 2:  
-            joystickName = joystickManager3.getJoystickName();
-                 break;
+                manager = joystickManager3;
+                break;
             case 3:
-            joystickName = joystickManager4.getJoystickName();  
+                manager = joystickManager4;
                 break;
             default:
-            joystickName = joystickManager1.getJoystickName();
-                break;    
+                manager = joystickManager1;
+                break;
         }
-        JLabel infoLabel = new JLabel("Joystick: " + joystickName);
-        infoLabel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
-        panel.add(infoLabel, BorderLayout.NORTH);
-        
+    
+        if (manager != null) {
+            JLabel infoLabel = new JLabel("Joystick: " + manager.getJoystickName());
+            infoLabel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+            panel.add(infoLabel, BorderLayout.NORTH);
+        }        
         return panel;
+    }
+
+
+    private void configureProfileActions() {
+            // Add new profile
+            addPerfil.addActionListener(e -> {
+                String nome = JOptionPane.showInputDialog(this, 
+                    "Nome do novo perfil:", 
+                    "Novo Perfil", 
+                    JOptionPane.QUESTION_MESSAGE);
+                
+                if (nome != null && !nome.trim().isEmpty()) {
+                    String descricao = JOptionPane.showInputDialog(this,
+                        "Descrição do perfil:",
+                        "Descrição",
+                        JOptionPane.QUESTION_MESSAGE);
+                    
+                    if (descricao == null) descricao = "";
+                    
+                    if (profileManager.createNewProfile(nome.trim(), descricao)) {
+                        updateProfileComboBox();
+                        perfilCombo.setSelectedItem(nome);
+                        JOptionPane.showMessageDialog(this,
+                            "Perfil criado com sucesso!",
+                            "Sucesso",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        JOptionPane.showMessageDialog(this,
+                            "Erro: Já existe um perfil com este nome.",
+                            "Erro",
+                            JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            });
+            
+            // Remove profile
+            removePerfil.addActionListener(e -> {
+                String perfilAtual = (String) perfilCombo.getSelectedItem();
+                if (perfilAtual == null || perfilAtual.equals("VNES")) {
+                    JOptionPane.showMessageDialog(this,
+                        "Não é possível remover o perfil padrão VNES.",
+                        "Aviso",
+                        JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+                
+                int confirm = JOptionPane.showConfirmDialog(this,
+                    "Deseja realmente remover o perfil '" + perfilAtual + "'?",
+                    "Confirmar Remoção",
+                    JOptionPane.YES_NO_OPTION);
+                
+                if (confirm == JOptionPane.YES_OPTION) {
+                    if (profileManager.deleteProfile(perfilAtual)) {
+                        updateProfileComboBox();
+                        JOptionPane.showMessageDialog(this,
+                            "Perfil removido com sucesso!",
+                            "Sucesso",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    }
+                }
+            });
+            
+            // Rename profile
+            renomearPerfil.addActionListener(e -> {
+                String perfilAtual = (String) perfilCombo.getSelectedItem();
+                if (perfilAtual == null) return;
+                
+                String novoNome = JOptionPane.showInputDialog(this,
+                    "Novo nome para o perfil '" + perfilAtual + "':",
+                    "Renomear Perfil",
+                    JOptionPane.QUESTION_MESSAGE);
+                
+                if (novoNome != null && !novoNome.trim().isEmpty() && !novoNome.equals(perfilAtual)) {
+                    if (profileManager.renameProfile(perfilAtual, novoNome.trim())) {
+                        updateProfileComboBox();
+                        perfilCombo.setSelectedItem(novoNome);
+                        JOptionPane.showMessageDialog(this,
+                            "Perfil renomeado com sucesso!",
+                            "Sucesso",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        JOptionPane.showMessageDialog(this,
+                            "Erro ao renomear perfil. Nome já existe?",
+                            "Erro",
+                            JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            });
+            
+            // Import profile
+            importBtn.addActionListener(e -> {
+                JFileChooser fileChooser = new JFileChooser();
+                fileChooser.setDialogTitle("Importar Perfil");
+                fileChooser.setFileFilter(new javax.swing.filechooser.FileFilter() {
+                    @Override
+                    public boolean accept(File f) {
+                        return f.isDirectory() || f.getName().toLowerCase().endsWith(".json");
+                    }
+                    
+                    @Override
+                    public String getDescription() {
+                        return "Arquivos JSON (*.json)";
+                    }
+                });
+                
+                if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+                    File file = fileChooser.getSelectedFile();
+                    if (profileManager.importProfile(file)) {
+                        updateProfileComboBox();
+                        JOptionPane.showMessageDialog(this,
+                            "Perfil importado com sucesso!",
+                            "Sucesso",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        JOptionPane.showMessageDialog(this,
+                            "Erro ao importar perfil. Verifique o formato do arquivo.",
+                            "Erro",
+                            JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            });
+            
+            // Export profile
+            exportBtn.addActionListener(e -> {
+                String perfilAtual = (String) perfilCombo.getSelectedItem();
+                if (perfilAtual == null) return;
+                
+                JFileChooser fileChooser = new JFileChooser();
+                fileChooser.setDialogTitle("Exportar Perfil");
+                fileChooser.setSelectedFile(new File(perfilAtual + ".json"));
+                fileChooser.setFileFilter(new javax.swing.filechooser.FileFilter() {
+                    @Override
+                    public boolean accept(File f) {
+                        return f.isDirectory() || f.getName().toLowerCase().endsWith(".json");
+                    }
+                    
+                    @Override
+                    public String getDescription() {
+                        return "Arquivos JSON (*.json)";
+                    }
+                });
+                
+                if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+                    File file = fileChooser.getSelectedFile();
+                    if (profileManager.exportProfile(perfilAtual, file)) {
+                        JOptionPane.showMessageDialog(this,
+                            "Perfil exportado com sucesso!",
+                            "Sucesso",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        JOptionPane.showMessageDialog(this,
+                            "Erro ao exportar perfil.",
+                            "Erro",
+                            JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            });
+            
+            // Save profile 
+            saveBtn.addActionListener(e -> {
+                String perfilAtual = (String) perfilCombo.getSelectedItem();
+                if (perfilAtual == null) return;
+                
+                // Save active manager state
+                JoystickManager[] managers = {
+                    joystickManager1, joystickManager2, joystickManager3, joystickManager4
+                };
+                
+                profileManager.saveCurrentStateToProfile(managers);
+                
+                // Perguntar se quer sobrescrever ou criar cópia
+                Object[] options = {"Sobrescrever", "Criar Cópia", "Cancelar"};
+                int escolha = JOptionPane.showOptionDialog(this,
+                    "Deseja sobrescrever o perfil atual ou criar uma cópia com as alterações?",
+                    "Salvar Perfil",
+                    JOptionPane.DEFAULT_OPTION,
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    options,
+                    options[0]);
+                
+                if (escolha == 0) { // Sobrescrever
+                    JOptionPane.showMessageDialog(this,
+                        "Configurações salvas no perfil '" + perfilAtual + "'",
+                        "Salvo",
+                        JOptionPane.INFORMATION_MESSAGE);
+                } else if (escolha == 1) { // Criar cópia
+                    String nomeCopia = JOptionPane.showInputDialog(this,
+                        "Nome para a cópia do perfil:",
+                        "Criar Cópia",
+                        JOptionPane.QUESTION_MESSAGE);
+                    
+                    if (nomeCopia != null && !nomeCopia.trim().isEmpty()) {
+                        if (profileManager.createNewProfile(nomeCopia.trim(), 
+                            "Cópia de " + perfilAtual + " - " + new Date())) {
+                            
+                            // Salvar configurações atuais no novo perfil
+                            profileManager.setCurrentProfile(nomeCopia);
+                            profileManager.saveCurrentStateToProfile(managers);
+                            
+                            updateProfileComboBox();
+                            perfilCombo.setSelectedItem(nomeCopia);
+                            
+                            JOptionPane.showMessageDialog(this,
+                                "Cópia do perfil criada com sucesso!",
+                                "Sucesso",
+                                JOptionPane.INFORMATION_MESSAGE);
+                        }
+                    }
+                }
+            });
+            
+            // Reverter para configurações salvas
+            revertBtn.addActionListener(e -> {
+                String perfilAtual = (String) perfilCombo.getSelectedItem();
+                if (perfilAtual == null) return;
+                
+                int confirm = JOptionPane.showConfirmDialog(this,
+                    "Deseja reverter para as configurações salvas do perfil '" + perfilAtual + "'?\n" +
+                    "Todas as alterações não salvas serão perdidas.",
+                    "Reverter Alterações",
+                    JOptionPane.YES_NO_OPTION);
+                
+                if (confirm == JOptionPane.YES_OPTION) {
+                    JoystickManager[] managers = {
+                        joystickManager1, joystickManager2, joystickManager3, joystickManager4
+                    };
+                    
+                    if (profileManager.loadProfileToManagers(perfilAtual, managers)) {
+                        // Atualizar UI
+                        for (DevicePanel panel : devicePanels) {
+                            panel.updateButtonLabels();
+                        }
+                        
+                        JOptionPane.showMessageDialog(this,
+                            "Configurações revertidas para o perfil salvo.",
+                            "Sucesso",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    }
+                }
+            });
+            
+            // Combo box selection changed
+            perfilCombo.addActionListener(e -> {
+                String perfilSelecionado = (String) perfilCombo.getSelectedItem();
+                if (perfilSelecionado != null && !perfilSelecionado.equals(profileManager.getCurrentProfileName())) {
+                    // Perguntar se quer salvar alterações não salvas
+                    int resposta = JOptionPane.showConfirmDialog(this,
+                        "Deseja salvar as alterações no perfil atual antes de mudar?",
+                        "Salvar Alterações",
+                        JOptionPane.YES_NO_CANCEL_OPTION);
+                    
+                    if (resposta == JOptionPane.YES_OPTION) {
+                        // Salvar antes de mudar
+                        JoystickManager[] managers = {
+                            joystickManager1, joystickManager2, joystickManager3, joystickManager4
+                        };
+                        profileManager.saveCurrentStateToProfile(managers);
+                        
+                        // Carregar novo perfil
+                        profileManager.loadProfileToManagers(perfilSelecionado, managers);
+                    } else if (resposta == JOptionPane.NO_OPTION) {
+                        // Carregar novo perfil sem salvar
+                        JoystickManager[] managers = {
+                            joystickManager1, joystickManager2, joystickManager3, joystickManager4
+                        };
+                        profileManager.loadProfileToManagers(perfilSelecionado, managers);
+                    } else {
+                        // Cancelar - voltar para item anterior
+                        perfilCombo.setSelectedItem(profileManager.getCurrentProfileName());
+                        return;
+                    }
+                    
+                    // Atualizar UI
+                    for (DevicePanel panel : devicePanels) {
+                        panel.updateButtonLabels();
+                    }
+                    
+                    // Mostrar informações do perfil
+                    String info = profileManager.getProfileInfo(perfilSelecionado);
+                    JOptionPane.showMessageDialog(this,
+                        info,
+                        "Informações do Perfil: " + perfilSelecionado,
+                        JOptionPane.INFORMATION_MESSAGE);
+                }
+            });
+    }
+
+    private void updateProfileComboBox() {
+         if (perfilCombo == null) {System.err.println("ERRO: perfilCombo é null!");
+            return; }
+        String selecionado = (String) perfilCombo.getSelectedItem();
+        perfilCombo.removeAllItems();
+        
+        if (profileManager == null) {System.err.println("ERRO: profileManager é null!");
+        return;}
+        List<String> perfis = profileManager.getProfileNames();
+        if (perfis == null || perfis.isEmpty()) {perfis = Arrays.asList("VNES");}
+        for (String perfil : perfis) {
+            perfilCombo.addItem(perfil);
+        }
+        String perfilParaSelecionar;
+        if (selecionado != null && perfis.contains(selecionado)) {
+            perfilParaSelecionar = selecionado;
+        } else {
+            // Obter perfil atual do manager ou usar "VNES" como fallback
+            perfilParaSelecionar = profileManager.getCurrentProfileName();
+            if (perfilParaSelecionar == null || !perfis.contains(perfilParaSelecionar)) {
+                perfilParaSelecionar = "VNES";}
+            }
+        perfilCombo.setSelectedItem(perfilParaSelecionar);
     }
     
      private void startUIUpdateTimer() {
@@ -432,40 +765,53 @@ public class MainWindow extends JFrame {
         }
         
         private void configureButton(int buttonIndex) {
-                try {
-                    String label = "Botão " + (buttonIndex + 1) + " - Player " + (playerId + 1);
-                    KeyCaptureDialog.CaptureResult result = KeyCaptureDialog.captureWithClear(
-                        ConfigDialog.getCurrentInstance(), label);
+            try {
+                String label = "Botão " + (buttonIndex + 1) + " - Player " + (playerId + 1);
+                KeyCaptureDialog.CaptureResult result = KeyCaptureDialog.captureWithClear(
+                    ConfigDialog.getCurrentInstance(), label);
+                
+                if (result.isCanceled()) {
+                    return; // Usuário pressionou ESC
+                }
+                
+                if (result.isClear()) {
+                    // Limpar o mapeamento deste botão
+                     joystickManager.clearButtonMapping(buttonIndex);
                     
-                    if (result.isClear()) {
-                        // Limpar o mapeamento deste botão
-                        joystickManager.setCustomButtonMapping(buttonIndex, -1); // -1 indica sem mapeamento
-                        updateButtonLabels();
-                        
-                        JOptionPane.showMessageDialog(this,
+                    // Atualizar UI
+                    SwingUtilities.invokeLater(() -> {
+                        buttonBtns[buttonIndex].setText("Botão " + (buttonIndex + 1) + ": [Não configurado]");
+                        JOptionPane.showMessageDialog(DevicePanel.this,
                             "Mapeamento do Botão " + (buttonIndex + 1) + " foi limpo.",
                             "Mapeamento Limpo",
                             JOptionPane.INFORMATION_MESSAGE);
-                    }
-                    else if (result.keyCode > 0) {
-                        joystickManager.setCustomButtonMapping(buttonIndex, result.keyCode);
-                        updateButtonLabels();
-                        joystickManager.setUseCustomMapping(true);
+                    });
+                }
+                else if (result.keyCode > 0) {
+                    // Configurar nova tecla
+                    joystickManager.setCustomButtonMapping(buttonIndex, result.keyCode);
+                    joystickManager.setUseCustomMapping(true);
+                    
+                    // Atualizar UI
+                    SwingUtilities.invokeLater(() -> {
+                        String keyName = KeyEvent.getKeyText(result.keyCode);
+                        buttonBtns[buttonIndex].setText("Botão " + (buttonIndex + 1) + ": " + keyName);
                         
-                        JOptionPane.showMessageDialog(this,
-                            "Botão " + (buttonIndex + 1) + " mapeado para: " + 
-                            KeyEvent.getKeyText(result.keyCode),
+                        JOptionPane.showMessageDialog(DevicePanel.this,
+                            "Botão " + (buttonIndex + 1) + " mapeado para: " + keyName,
                             "Mapeamento Configurado",
                             JOptionPane.INFORMATION_MESSAGE);
-                    }
-                } catch (Exception e) {
-                    System.err.println("Erro ao configurar botão: " + e.getMessage());
-                    JOptionPane.showMessageDialog(this,
-                        "Erro ao configurar botão: " + e.getMessage(),
-                        "Erro",
-                        JOptionPane.ERROR_MESSAGE);
+                    });
                 }
+            } catch (Exception e) {
+                System.err.println("Erro ao configurar botão: " + e.getMessage());
+                JOptionPane.showMessageDialog(this,
+                    "Erro ao configurar botão: " + e.getMessage(),
+                    "Erro",
+                    JOptionPane.ERROR_MESSAGE);
+            }
         }
+        
         
         private void configureAxis(int axisIndex) {
                 try {
@@ -631,6 +977,8 @@ public class MainWindow extends JFrame {
                 System.err.println("Erro ao atualizar UI state: " + e.getMessage());
             }
         }
+
+        
         
         public void updateButtonLabels() {
             try {
@@ -640,6 +988,10 @@ public class MainWindow extends JFrame {
                     int keyCode = joystickManager.getMappedKeyForButton(i);
                     String keyName = (keyCode > 0) ? KeyEvent.getKeyText(keyCode) : "[Não configurado]";
                     buttonBtns[i].setText("Botão " + (i+1) + ": " + keyName);
+                     // Verificar se o botão foi inicializado
+                    if (buttonBtns[i] != null) {
+                        buttonBtns[i].setText("Botão " + (i+1) + ": " + keyName);
+                    }
                 }
                 
                 // Atualizar labels dos eixos
