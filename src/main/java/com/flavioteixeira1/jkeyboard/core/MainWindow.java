@@ -20,8 +20,8 @@ public class MainWindow extends JFrame {
     HelpDialog helpDialog;
 
     public MainWindow() {
-        super("vNes Desktop - Joystick Config ");
-        //setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        super("Jkeyboard Joystick Config ");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(900, 650);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
@@ -142,18 +142,6 @@ public class MainWindow extends JFrame {
         // --- Bottom Bar ---
         JPanel bottomBar = new JPanel(new FlowLayout(FlowLayout.CENTER));
         JButton clearBtn = new JButton("Limpar");
-        JButton debugBtn = new JButton("Debug");
-            debugBtn.addActionListener(e -> {
-                System.out.println("\n=== DEBUG MAPPING ===");
-                System.out.println(joystickManager1.getMappingStatus());
-                System.out.println("====================\n");
-                
-                JTextArea textArea = new JTextArea(joystickManager1.getMappingStatus(), 20, 50);
-                JScrollPane scrollPane = new JScrollPane(textArea);
-                JOptionPane.showMessageDialog(this, scrollPane, "Debug Mapeamento", 
-                    JOptionPane.INFORMATION_MESSAGE);
-            });
-            bottomBar.add(debugBtn);
         JButton quickSetBtn = new JButton("Configuração Rápida");
         JButton toggleMappingBtn = new JButton("Usar Mapeamento Customizado");
         JButton closeBtn = new JButton("Fechar Diálogo");
@@ -624,7 +612,16 @@ public class MainWindow extends JFrame {
             "3. Para eixos: configure direções separadamente\n" +
             "4. Use 'Usar Mapeamento Customizado' para ativar - IMPORTANTE \n\n" +
             "Dica: Pressione ESC para cancelar durante a captura.\n" +
-            "Pressione Ctrl + L para apagar um mapeamento"
+            "Pressione Ctrl + L para apagar um mapeamento \n" +
+            "Exemplo : Clique em Eixo X :Left/Right  \n" +
+            "Clique em Negativo e depois pressione seta esquerda \n" +
+            "Depois clique novamente no botão Eixo X: Left/Right \n" +
+            "Clique em Positivo e depois pressione seta direita \n" +
+            "Clique em Eixo Y: Up/Down \n" + 
+            "Clique em Negativo e pressione seta para cima \n" +
+            "Clique novamente em Eixo T: Up/Down \n" +
+            "Clique em positivo e depois pressione seta para baixo \n" +
+            "Assim você já configurou o direcional (Eixos) "
         );
         instructions.setEditable(false);
         instructions.setMargin(new Insets(10, 10, 10, 10));

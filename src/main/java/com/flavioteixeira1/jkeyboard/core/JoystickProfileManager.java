@@ -228,7 +228,7 @@ public class JoystickProfileManager {
     
     private JoystickProfileManager() {
         profiles = new LinkedHashMap<>();
-        profilesDir = System.getProperty("user.home") + File.separator + ".vnes" + File.separator + "profiles";
+        profilesDir = System.getProperty("user.home") + File.separator + ".jkeyboard" + File.separator + "profiles";
         
        // Criar diretório se não existir
         File dir = new File(profilesDir);
@@ -237,7 +237,7 @@ public class JoystickProfileManager {
             if (!created) {
                 System.err.println("Não foi possível criar diretório de perfis: " + profilesDir);
                 // Usar diretório temporário como fallback
-                profilesDir = System.getProperty("java.io.tmpdir") + File.separator + "vnes_profiles";
+                profilesDir = System.getProperty("java.io.tmpdir") + File.separator + "jkeyboard_profiles";
                 dir = new File(profilesDir);
                 dir.mkdirs();
             }
